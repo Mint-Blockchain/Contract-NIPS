@@ -11,8 +11,6 @@ contract NIPFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
 
     event NFTCollectionCreated(address indexed owner, address indexed collectionAddress, uint256 collectionType, string name, string symbol);
 
-    error InvalidCaller();
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
