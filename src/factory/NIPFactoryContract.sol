@@ -5,8 +5,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
-import "../examples/ERC721Example.sol";
-
 contract NIPFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(uint256 => address) public implementationTypes;
