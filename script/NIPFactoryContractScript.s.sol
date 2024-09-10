@@ -12,17 +12,17 @@ contract NIPFactoryContractScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address[] memory implementations = new address[](10);
+        implementations[0] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[1] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[2] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[3] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[4] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
-        implementations[5] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
 
+        implementations[5] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[6] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[7] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[8] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
         implementations[9] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
-        implementations[10] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
 
 
 

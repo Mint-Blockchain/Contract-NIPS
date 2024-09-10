@@ -28,8 +28,8 @@ contract NIPFactoryContract is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgrad
         __ERC721_init("NIPS Owner", "NIPOwner");
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
-        for (uint i = 1; i <= _implementations.length; i++) {
-            implementationTypes[i] = _implementations[i];
+        for (uint i = 0; i < _implementations.length; i++) {
+            implementationTypes[i+1] = _implementations[i];
         }
     }
 
