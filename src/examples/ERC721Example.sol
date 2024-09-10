@@ -7,19 +7,21 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract ERC721Example is Initializable, ERC721Upgradeable, OwnableUpgradeable {
     uint256 private _nextTokenId;
+    string public _baseUri;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner, string memory name, string memory symbol) initializer public {
+    function initialize(address initialOwner, string memory name, string memory symbol, bytes calldata extendData) initializer public {
         __ERC721_init(name, symbol);
         __Ownable_init(initialOwner);
+        _baseUri = abi.decode(extendData, (string));
     }
 
-    function _baseURI() internal pure override returns (string memory) {
-        return "544564";
+    function _baseURI() internal view override returns (string memory) {
+        return _baseUri;
     }
 
     function mint(address to) external {

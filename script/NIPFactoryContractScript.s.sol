@@ -11,11 +11,24 @@ contract NIPFactoryContractScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
+        address[] memory implementations = new address[](10);
+        implementations[1] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[2] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[3] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[4] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[5] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+
+        implementations[6] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[7] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[8] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[9] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+        implementations[10] = 0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC;
+
+
+
         address factoryProxy = Upgrades.deployUUPSProxy(
             "NIPFactoryContract.sol",
-            abi.encodeCall(NIPFactoryContract.initialize,
-            (0x68C6998e579551e3c84d2Fea4C0a8875dd3E16FC, 0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,
-            0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6,0xB8C1f3268520c9ADe36Ed136B921246723eAe9b6))
+            abi.encodeCall(NIPFactoryContract.initialize, implementations)
         );
         console.log("factoryProxy -> %s", factoryProxy);
 
