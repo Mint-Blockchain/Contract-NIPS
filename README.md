@@ -1,6 +1,7 @@
 NIPS Parameter Description:
 
 _collectionType:
+
     1 -> ERC721
     2 -> ERC721A
     3 -> ERC1155
