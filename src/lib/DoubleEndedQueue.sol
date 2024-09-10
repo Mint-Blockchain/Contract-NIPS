@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (utils/structs/DoubleEndedQueue.sol)
 // Modified by Pandora Labs to support native uint256 operations
-pragma solidity 0.8.26;
+pragma solidity ^0.8.20;
 
 /**
  * @dev A sequence of items with the ability to efficiently push and pop items (i.e. insert and remove) on both ends of
