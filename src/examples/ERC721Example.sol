@@ -26,6 +26,6 @@ contract ERC721Example is Initializable, ERC721Upgradeable, OwnableUpgradeable {
 
     function mint(address to) external {
         uint256 tokenId = ++_nextTokenId;
-        _mint(to, tokenId);
+        _safeMint(to, tokenId);
     }
 }

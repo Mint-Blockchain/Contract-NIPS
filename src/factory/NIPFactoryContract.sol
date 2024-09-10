@@ -1,15 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../examples/ERC721Example.sol";
 
-contract NIPFactoryContract is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract NIPFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(uint256 => address) public implementationTypes;
 
@@ -25,7 +23,6 @@ contract NIPFactoryContract is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgrad
     function initialize(
         address[] memory _implementations
     ) initializer external {
-        __ERC721_init("NIPS Owner", "NIPOwner");
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
         for (uint i = 0; i < _implementations.length; i++) {
@@ -45,26 +42,22 @@ contract NIPFactoryContract is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgrad
         bytes32 salt = keccak256(abi.encode(sender, _name, _symbol, block.timestamp));
         address collection = Clones.cloneDeterministic(implementationTypes[_collectionType], salt);
 
-        if (_collectionType == 0) {
-            (bool success, bytes memory returnData) = collection.call(abi.encodeCall(
-            ERC721Example.initialize, (sender, _name, _symbol, _extendData)));
-            if (!success) {
-                assembly {
-                    revert(add(returnData, 32), mload(returnData))
-                }
+        (bool success, bytes memory returnData) = collection.call(abi.encodeWithSelector(
+        0x267eb9ed, sender, _name, _symbol, _extendData));
+        if (!success) {
+            assembly {
+                revert(add(returnData, 32), mload(returnData))
             }
         }
+
         emit NFTCollectionCreated(msg.sender, collection, _collectionType, _name, _symbol);
         return collection;
     }
 
-    function checkCaller(bytes32 salt) internal view {
-        if (address(bytes20(salt)) != msg.sender) {
-            revert InvalidCaller();
-        }
+
+    function setImplementationTypes(uint256 _collectionType, address _implementation) external onlyOwner {
+        implementationTypes[_collectionType] = _implementation;
     }
-
-
 
     function _authorizeUpgrade(address newImplementation)
         internal
