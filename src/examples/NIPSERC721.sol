@@ -10,16 +10,10 @@ abstract contract NIPSERC721 is Initializable, ERC721Upgradeable, OwnableUpgrade
     string public _baseUri;
 
     function initialize(address initialOwner, string memory name, string memory symbol, bytes calldata extendData) initializer public {
-        _NIPSERC721_init(initialOwner, name, symbol);
-        _initInfo(extendData);
-    }
-
-
-    function _NIPSERC721_init(address initialOwner, string memory name, string memory symbol) internal onlyInitializing {
         __ERC721_init(name, symbol);
         __Ownable_init(initialOwner);
+        _initInfo(extendData);
     }
-
 
     function _baseURI() internal view override returns (string memory) {
         return _baseUri;
