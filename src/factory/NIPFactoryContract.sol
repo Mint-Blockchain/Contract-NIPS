@@ -22,7 +22,7 @@ contract NIPFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(_msgSender());
         __UUPSUpgradeable_init();
         for (uint i = 0; i < _implementations.length; i++) {
-            implementationTypes[i+1] = _implementations[i];
+            implementationTypes[i] = _implementations[i];
         }
     }
 
