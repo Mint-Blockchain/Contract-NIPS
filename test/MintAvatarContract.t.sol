@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract TestMintAvatarContractt is Test {
-
     address constant OWNER_ADDRESS = 0xC565FC29F6df239Fe3848dB82656F2502286E97d;
 
     address private proxy;
@@ -16,8 +15,7 @@ contract TestMintAvatarContractt is Test {
     function setUp() public {
         console.log("=======setUp============");
         proxy = Upgrades.deployUUPSProxy(
-            "MintAvatarContract.sol",
-            abi.encodeCall(MintAvatarContract.initialize, OWNER_ADDRESS)
+            "MintAvatarContract.sol", abi.encodeCall(MintAvatarContract.initialize, OWNER_ADDRESS)
         );
         console.log("uups proxy -> %s", proxy);
 
@@ -33,11 +31,13 @@ contract TestMintAvatarContractt is Test {
         // vm.prank(OWNER_ADDRESS);
 
         vm.startPrank(OWNER_ADDRESS);
-        string memory name = unicode"xxx";
+        string memory name = unicode"x😁x";
         string memory contentId = "1";
         uint8 contentType = 1;
         uint256 tokenId = instance.mint(name, contentType, contentId);
+        string memory tokenName = instance.getName(tokenId);
         assertEq(tokenId, 1, string.concat("tokenId != 1, ", Strings.toString(tokenId)));
+        assertEq(tokenName, name, string.concat("tokenName encode err, ", Strings.toString(tokenId)));
         vm.stopPrank();
     }
 }

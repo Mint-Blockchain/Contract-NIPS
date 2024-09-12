@@ -10,13 +10,13 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     struct TokenMetadata {
         string name;
+        // 0 -> on-chain-text, 1 -> textFile, 2 -> jpg, 3 -> png, 4 -> svg, 5 -> gif, 6 -> mp4
         uint8 contentType;
-        string contentId;
+        string content;
         bool exists;
     }
 
-    string public _mediaURI;
-    string public _textURI;
+    string public _baseUri;
     uint256 public _nextTokenId;
 
     mapping(uint256 tokenId => TokenMetadata) public _metadatas;
@@ -32,29 +32,26 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
         __UUPSUpgradeable_init();
     }
 
-    function mint(string memory name, uint8 contentType, string memory contentId) external returns (uint256) {
+    function mint(string memory name, uint8 contentType, string memory content) external returns (uint256) {
         address sender = _msgSender();
         uint256 tokenId = ++_nextTokenId;
         _mint(sender, tokenId);
-        _metadatas[tokenId] = TokenMetadata(name, contentType, contentId, true);
+        _metadatas[tokenId] = TokenMetadata(name, contentType, content, true);
         return tokenId;
     }
 
-    function setTextURI(string calldata uri) external onlyOwner {
-        _textURI = uri;
-    }
-
-    function setMediaURI(string calldata uri) external onlyOwner {
-        _mediaURI = uri;
+    function setBaseURI(string calldata uri) external onlyOwner {
+        _baseUri = uri;
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
-        if (metadata.contentType == 1) {
-            return string.concat(_textURI, metadata.contentId);
+        if (metadata.contentType == 0) {
+            // on-chain-text
+            return metadata.content;
         } else {
-            return string.concat(_mediaURI, metadata.contentId);
+            return string.concat(_baseUri, metadata.content);
         }
     }
 
