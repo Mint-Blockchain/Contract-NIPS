@@ -32,11 +32,11 @@ contract TestMintAvatarContractt is Test {
 
         vm.startPrank(OWNER_ADDRESS);
         string memory name = unicode"x😁x";
-        string memory contentId = "1";
+        string memory contentId = "http://aabb/xxx.jpg";
         uint256 tokenId = instance.mint(name, contentId);
         assertEq(tokenId, 1, string.concat("tokenId != 1, ", Strings.toString(tokenId)));
         string memory tokenUri = instance.tokenURI(tokenId);
-        assertEq(tokenUri, unicode'{"name": "x😁x", "avatar": "1"}', "tokenUri not match");
+        assertEq(tokenUri, unicode'{"name": "x😁x", "avatar": "http://aabb/xxx.jpg"}', "tokenUri not match");
         vm.stopPrank();
     }
 }
