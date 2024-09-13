@@ -8,10 +8,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 
-contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     struct TokenMetadata {
         string name;
-        string url;
+        string content;
         bool exists;
     }
 
@@ -26,18 +26,18 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
     }
 
     function initialize(address initialOwner) external initializer {
-        __ERC721_init("MintAvatar", "MA");
+        __ERC721_init("MintInscription", "MI");
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
     }
 
-    function mint(string memory name, string memory url) external returns (uint256) {
+    function mint(string memory name, string memory content) external returns (uint256) {
         require(bytes(name).length < 1024, "name max size is 1kb");
-        require(bytes(url).length < 1024, "url max size is 1kb");
+        require(bytes(content).length < 1024, "content max size is 1kb");
         address sender = _msgSender();
         uint256 tokenId = ++_nextTokenId;
-        _safeMint(sender, tokenId);
-        _metadatas[tokenId] = TokenMetadata(name, url, true);
+        _mint(sender, tokenId);
+        _metadatas[tokenId] = TokenMetadata(name, content, true);
         return tokenId;
     }
 
@@ -52,7 +52,8 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
     function tokenURIJSON(uint256 tokenId) public view returns (string memory) {
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
-        return string(abi.encodePacked("{", '"name": "', metadata.name, '", "avatar": "', metadata.url, '"', "}"));
+        return
+            string(abi.encodePacked("{", '"name": "', metadata.name, '", "inscription": "', metadata.content, '"', "}"));
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
