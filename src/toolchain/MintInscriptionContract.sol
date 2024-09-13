@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
 
 contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     struct TokenMetadata {
@@ -25,7 +26,7 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
     }
 
     function initialize(address initialOwner) external initializer {
-        __ERC721_init("MintAvatar", "MA");
+        __ERC721_init("MintInscription", "MI");
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
     }
@@ -45,6 +46,10 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        return string(abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(tokenURIJSON(tokenId)))));
+    }
+
+    function tokenURIJSON(uint256 tokenId) public view returns (string memory) {
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
         return

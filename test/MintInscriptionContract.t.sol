@@ -35,7 +35,7 @@ contract TestMintInscriptionContractt is Test {
         string memory contentId = "aaaaaaaaabbbbbbb";
         uint256 tokenId = instance.mint(name, contentId);
         assertEq(tokenId, 1, string.concat("tokenId != 1, ", Strings.toString(tokenId)));
-        string memory tokenUri = instance.tokenURI(tokenId);
+        string memory tokenUri = instance.tokenURIJSON(tokenId);
         assertEq(tokenUri, unicode'{"name": "x😁x", "inscription": "aaaaaaaaabbbbbbb"}', "tokenUri not match");
         vm.stopPrank();
     }
