@@ -32,6 +32,12 @@ contract NIPFactoryContractScript is Script {
         );
         console.log("factoryProxy -> %s", factoryProxy);
 
+
+        // Upgrades.upgradeProxy(
+        //     0xe85aCeF13Ca64Ca7b42622eAd50da6FE9928B18E,
+        //     "NIPFactoryContract.sol",
+        //     ""
+        // );
         vm.stopBroadcast();
     }
 }

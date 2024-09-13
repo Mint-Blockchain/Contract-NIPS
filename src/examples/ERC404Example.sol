@@ -16,7 +16,7 @@ contract ERC404Example is ERC404, OwnableUpgradeable {
 
     function initialize(address initialOwner, string memory name, string memory symbol, bytes calldata extendData) initializer public {
         __Ownable_init(initialOwner);
-        __ERC404_init(name, symbol, 18, 10000);
+        __ERC404_init(name, symbol, 18, 1);
         _initInfo(extendData);
     }
 
