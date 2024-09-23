@@ -15,3 +15,7 @@ docs/
 
 # /broadcast
 /broadcast/**
+
+# Ignores file histories
+.history/src/
+.history/
