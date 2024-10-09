@@ -4,13 +4,13 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./../lib/erc4400/IERC721Consumable.sol";
+import "./../lib/erc4400/IEIP721Consumable.sol";
 
 contract ERC4400Example is
     Initializable,
     ERC721Upgradeable,
     OwnableUpgradeable,
-    IERC721Consumable
+    IEIP721Consumable
 {
     string public _baseUri;
     mapping(uint256 => address) _tokenConsumers;
@@ -80,7 +80,7 @@ contract ERC4400Example is
         bytes4 interfaceId
     ) public view override returns (bool) {
         return
-            interfaceId == type(IERC721Consumable).interfaceId ||
+            interfaceId == type(IEIP721Consumable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
