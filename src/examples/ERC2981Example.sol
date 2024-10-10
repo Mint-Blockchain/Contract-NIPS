@@ -24,14 +24,10 @@ contract ERC2981Example is
         address initialOwner,
         string memory name,
         string memory symbol,
-        address royaltyReceiver,
-        uint96 feeNumerator,
         bytes calldata extendData
     ) public initializer {
         __ERC721_init(name, symbol);
         __Ownable_init(initialOwner);
-
-        _setDefaultRoyalty(royaltyReceiver, feeNumerator);
         _initInfo(extendData);
     }
 
@@ -39,13 +35,19 @@ contract ERC2981Example is
         return _baseUri;
     }
 
-    function mint(address to) external {
+    function mint(address to) external onlyOwner {
         uint256 tokenId = ++_nextTokenId;
         _safeMint(to, tokenId);
     }
 
     function _initInfo(bytes calldata extendData) internal {
-        _baseUri = abi.decode(extendData, (string));
+        (string memory baseUri, address royaltyReceiver, uint96 feeNumerator) = abi.decode(
+            extendData,
+            (string, address, uint96)
+        );
+
+        _baseUri = baseUri;
+        _setDefaultRoyalty(royaltyReceiver, feeNumerator);
     }
 
     function supportsInterface(bytes4 interfaceId)
