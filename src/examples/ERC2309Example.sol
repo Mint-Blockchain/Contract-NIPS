@@ -7,6 +7,8 @@ import "erc721a-upgradeable/ERC721AUpgradeable.sol";
 
 contract ERC2309Example is Initializable, ERC721AUpgradeable, OwnableUpgradeable {
 
+    string public _baseUri;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -18,12 +20,18 @@ contract ERC2309Example is Initializable, ERC721AUpgradeable, OwnableUpgradeable
         _initInfo(extendData);
     }
 
-    function _initInfo(bytes calldata extendData) internal {}
-
+    function _initInfo(bytes calldata extendData) internal {
+        _baseUri = abi.decode(extendData, (string));
+    }
+    
     /**
      * @dev Mint a batch of tokens of length `quantity` for `to`.
      */
     function mintConsecutive(address to, uint256 quantity) external {
         _mintERC2309(to, quantity);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return _baseUri;
     }
 }
