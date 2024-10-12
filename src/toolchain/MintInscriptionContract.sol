@@ -32,8 +32,8 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
     }
 
     function mint(string memory name, string memory content) external returns (uint256) {
-        require(bytes(name).length < 1024, "name max size is 1kb");
-        require(bytes(content).length < 1024, "content max size is 1kb");
+        require(bytes(name).length < 8096, "name max size is 8kb");
+        require(bytes(content).length < 8096, "content max size is 8kb");
         address sender = _msgSender();
         uint256 tokenId = ++_nextTokenId;
         _mint(sender, tokenId);
@@ -53,7 +53,7 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
         return
-            string(abi.encodePacked("{", '"name": "', metadata.name, '", "inscription": "', metadata.content, '"', "}"));
+            string(abi.encodePacked("{", '"uname": "', metadata.name, '", "inscription": "', metadata.content, '"', "}"));
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
