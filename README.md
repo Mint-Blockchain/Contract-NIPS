@@ -23,3 +23,8 @@ ERC1155
 OpenZeppelin-ERC1155 - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC1155/ERC1155.sol
 OpenZeppelin-ERC1155-Upgradeable - https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/ERC1155/ERC1155Upgradeable.sol
 Solady-ERC1155 - https://github.com/Vectorized/solady/blob/main/src/tokens/ERC1155.sol
+
+ERC2981
+OpenZeppelin-ERC2981 - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/common/ERC2981.sol
+OpenZeppelin-ERC2981-Upgradeable - https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/common/ERC2981Upgradeable.sol
+Solady-ERC2981 - https://github.com/Vectorized/solady/blob/main/src/tokens/ERC2981.sol
