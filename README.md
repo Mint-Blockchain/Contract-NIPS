@@ -30,10 +30,6 @@ OpenZeppelin-ERC2981 - https://github.com/OpenZeppelin/openzeppelin-contracts/bl
 OpenZeppelin-ERC2981-Upgradeable - https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/common/ERC2981Upgradeable.sol
 Solady-ERC2981 - https://github.com/Vectorized/solady/blob/main/src/tokens/ERC2981.sol
 
-<<<<<<< HEAD
-ERC404
-https://github.com/Pandora-Labs-Org/erc404/blob/main/contracts/ERC404.sol
-=======
 ERC721A
 Azuki-ERC721A - https://github.com/chiru-labs/ERC721A/blob/main/contracts/ERC721A.sol
 Azuki-ERC721A-Upgradeable - https://github.com/chiru-labs/ERC721A-Upgradeable/blob/main/contracts/ERC721AUpgradeable.sol
@@ -61,4 +57,3 @@ ERC4907-Reference - https://github.com/ethereum/ERCs/blob/master/assets/erc-4907
 
 ERC5007
 ERC5007-Reference - https://github.com/ethereum/ERCs/blob/master/assets/erc-5007/contracts/ERC5007.sol
->>>>>>> 50d6406eca221d25608813ccee569b06ca7a3bb2
