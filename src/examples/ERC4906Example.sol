@@ -14,6 +14,7 @@ contract ERC4906Example is Initializable, ERC721Upgradeable, OwnableUpgradeable 
 
     event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }

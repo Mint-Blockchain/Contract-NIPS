@@ -14,6 +14,7 @@ contract ERC7765Example is
     OwnableUpgradeable
 {
     string public _baseUri;
+    uint256 private _nextTokenId;
 
     uint256 public constant PRIVILEGE_ID = 1;
 
@@ -102,5 +103,10 @@ contract ERC7765Example is
     }
     function _initInfo(bytes calldata extendData) internal {
         _baseUri = abi.decode(extendData, (string));
+    }
+
+    function mint(address to) external {
+        uint256 tokenId = ++_nextTokenId;
+        _safeMint(to, tokenId);
     }
 }

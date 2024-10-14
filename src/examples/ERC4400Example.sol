@@ -13,6 +13,7 @@ contract ERC4400Example is
     IEIP721Consumable
 {
     string public _baseUri;
+    uint256 private _nextTokenId;
     mapping(uint256 => address) _tokenConsumers;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -86,5 +87,10 @@ contract ERC4400Example is
 
     function _initInfo(bytes calldata extendData) internal {
         _baseUri = abi.decode(extendData, (string));
+    }
+
+    function mint(address to) external {
+        uint256 tokenId = ++_nextTokenId;
+        _safeMint(to, tokenId);
     }
 }

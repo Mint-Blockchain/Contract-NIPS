@@ -14,6 +14,9 @@ contract ERC5007Example is Initializable, ERC721Upgradeable, OwnableUpgradeable,
         bool exist;
     }
 
+    uint256 private _nextTokenId;
+    string public _baseUri;
+
     mapping(uint256 => TimeNftInfo) internal _timeNftMapping;
 
 
@@ -76,7 +79,16 @@ contract ERC5007Example is Initializable, ERC721Upgradeable, OwnableUpgradeable,
         info.endTime = endTime_;
     }
 
+    function _baseURI() internal view override returns (string memory) {
+        return _baseUri;
+    }
+
+    function mint(address to) external {
+        uint256 tokenId = ++_nextTokenId;
+        _safeMint(to, tokenId);
+    }
+
     function _initInfo(bytes calldata extendData) internal {
-        
+        _baseUri = abi.decode(extendData, (string));
     }
 }
