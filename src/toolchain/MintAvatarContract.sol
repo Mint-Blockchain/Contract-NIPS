@@ -32,8 +32,8 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
     }
 
     function mint(string memory name, string memory url) external returns (uint256) {
-        require(bytes(name).length < 1024, "name max size is 1kb");
-        require(bytes(url).length < 1024, "url max size is 1kb");
+        require(bytes(name).length < 8096, "name max size is 8kb");
+        require(bytes(url).length < 8096, "url max size is 8kb");
         address sender = _msgSender();
         uint256 tokenId = ++_nextTokenId;
         _safeMint(sender, tokenId);
@@ -52,7 +52,7 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
     function tokenURIJSON(uint256 tokenId) public view returns (string memory) {
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
-        return string(abi.encodePacked("{", '"name": "', metadata.name, '", "avatar": "', metadata.url, '"', "}"));
+        return string(abi.encodePacked("{", '"uname": "', metadata.name, '", "image": "', metadata.url, '"', "}"));
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

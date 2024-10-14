@@ -39,8 +39,7 @@ contract ERC4906Example is Initializable, ERC721Upgradeable, OwnableUpgradeable 
     }
 
     function updateMetadata(uint256 tokenId) public onlyOwner {
-        // require(_exists(tokenId), "ERC4906: Update for nonexistent token");
-        emit MetadataUpdate(tokenId);  // Emit event for metadata update
+        emit MetadataUpdate(tokenId);
     }
 
     function batchUpdateMetadata(uint256 fromTokenId, uint256 toTokenId) public onlyOwner {
