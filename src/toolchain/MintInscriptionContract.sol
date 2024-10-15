@@ -53,7 +53,7 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
         TokenMetadata memory metadata = _metadatas[tokenId];
         require(metadata.exists, string(abi.encodePacked("tokenURI: ", Strings.toString(tokenId), " not found.")));
         return
-            string(abi.encodePacked("{", '"uname": "', metadata.name, '", "inscription": "', metadata.content, '"', "}"));
+            string(abi.encodePacked("{", '"name": "', metadata.name, '", "inscription": "', metadata.content, '"', "}"));
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
