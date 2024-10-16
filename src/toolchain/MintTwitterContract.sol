@@ -40,6 +40,8 @@ contract MintTwitterContract is
         string memory twitter,
         string memory url
     ) external returns (uint256) {
+        require(bytes(twitter).length > 0, "twitter can not be empty");
+        require(bytes(url).length > 0, "url can not be empty");
         require(bytes(twitter).length < 1024, "twitter max size is 1kb");
         require(bytes(url).length < 1024, "url max size is 1kb");
         address sender = _msgSender();

@@ -36,7 +36,7 @@ contract TestMintAvatarContractt is Test {
         uint256 tokenId = instance.mint(name, url);
         assertEq(tokenId, 1, string.concat("tokenId != 1, ", Strings.toString(tokenId)));
         string memory tokenUri = instance.tokenURIJSON(tokenId);
-        assertEq(tokenUri, unicode'{"name": "x😁x", "avatar": "http://aabb/xxx.jpg"}', "tokenUri not match");
+        assertEq(tokenUri, unicode'{"name": "x😁x", "image": "http://aabb/xxx.jpg"}', "tokenUri not match");
         vm.stopPrank();
     }
 }

@@ -32,6 +32,8 @@ contract MintAvatarContract is Initializable, ERC721Upgradeable, OwnableUpgradea
     }
 
     function mint(string memory name, string memory url) external returns (uint256) {
+        require(bytes(name).length > 0, "name can not be empty");
+        require(bytes(url).length > 0, "url can not be empty");
         require(bytes(name).length < 8096, "name max size is 8kb");
         require(bytes(url).length < 8096, "url max size is 8kb");
         address sender = _msgSender();

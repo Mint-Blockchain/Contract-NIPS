@@ -32,6 +32,8 @@ contract MintInscriptionContract is Initializable, ERC721Upgradeable, OwnableUpg
     }
 
     function mint(string memory name, string memory content) external returns (uint256) {
+        require(bytes(name).length > 0, "name can not be empty");
+        require(bytes(content).length > 0, "content can not be empty");
         require(bytes(name).length < 8096, "name max size is 8kb");
         require(bytes(content).length < 8096, "content max size is 8kb");
         address sender = _msgSender();
