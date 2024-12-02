@@ -19,3 +19,6 @@ docs/
 # Ignores file histories
 .history/src/
 .history/
+
+.vscode
+remappings.txt
