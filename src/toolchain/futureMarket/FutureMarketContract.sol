@@ -2,22 +2,18 @@
 pragma solidity ^0.8.20;
 
 import "./FutureMarketCommonStorage.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract FutureMarketContract is
     Initializable,
     ERC721EnumerableUpgradeable,
+    OwnableUpgradeable,
     FutureMarketCommonStorage
 {
     using SafeERC20 for IERC20;
@@ -33,32 +29,29 @@ contract FutureMarketContract is
 
     function initialize(
         string calldata _name,
-        string calldata _symbol,
         address _creator,
         uint32 _startTime,
         uint32 _endTime,
         uint32 _allocationTime
     ) external initializer {
-        __ERC721_init(_name, _symbol);
+        __ERC721_init(_name, "FM");
+        __Ownable_init(_creator);
 
         startTime = _startTime;
         endTime = _endTime;
         allocationTime = _allocationTime;
-        creator = _creator;
     }
 
-    modifier checkPublicPhase() {
+    function bet(uint256 _amount, uint256 _solution) external {
         require(block.timestamp >= startTime, "Haven't started yet");
         require(block.timestamp <= endTime, "Already over");
-        _;
-    }
 
-    function buy(uint256 _amount, uint256 _solution) external checkPublicPhase {
         require(_amount > 0, "Invalid amount");
         require(
             _solution == A_SOLUTION || _solution == B_SOLUTION,
             "Invalid _solution"
         );
+
         address sender = _msgSender();
         require(
             usdtToken.balanceOf(sender) >= _amount,
@@ -66,16 +59,16 @@ contract FutureMarketContract is
         );
 
         usdtToken.safeTransferFrom(sender, address(this), _amount);
-        uint256 tokenId = ++_nextTokenId;
+        uint256 tokenId = _nextTokenId++;
         _mint(sender, tokenId);
 
         totalAmounts += _amount;
         solutionAmounts[_solution] += _amount;
         solutionNumber[_solution]++;
         tokenSolution[tokenId] = _solution;
-        tokenAmouns[tokenId] = _amount;
+        tokenAmounts[tokenId] = _amount;
 
-        emit FutureMarket(sender, address(this), tokenId, _amount, _solution);
+        emit Bet(sender, address(this), tokenId, _amount, _solution);
     }
 
     function setCorrectSolution(
@@ -114,7 +107,7 @@ contract FutureMarketContract is
                 usdtToken.safeTransfer(PLATFORM_ADDRESS, platformAmounts);
             }
             if (ownerAmounts > 0) {
-                usdtToken.safeTransfer(creator, ownerAmounts);
+                usdtToken.safeTransfer(owner(), ownerAmounts);
             }
         }
 
@@ -137,8 +130,8 @@ contract FutureMarketContract is
         (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
 
         _rewards =
-            (tokenAmouns[_tokenId] / solutionAmounts[_solution]) *
-            _winnerAllocationAmounts;
+            (tokenAmounts[_tokenId] * _winnerAllocationAmounts) /
+            solutionAmounts[_solution];
     }
 
     function forecastNewInvestRewards(
@@ -150,11 +143,12 @@ contract FutureMarketContract is
             "The Solution have been announced"
         );
         (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
+        uint256 _newSolutionAmounts = solutionAmounts[_solution] + _amount;
+        _winnerAllocationAmounts += _amount;
 
-        _rewards =
-            (_amount / solutionAmounts[_solution]) *
-            _winnerAllocationAmounts;
+        _rewards = (_amount / _newSolutionAmounts) * _winnerAllocationAmounts;
     }
+
     function calculateAllRewards() external view returns (uint256 _rewards) {
         require(
             correctSolutionStatus,
@@ -169,13 +163,14 @@ contract FutureMarketContract is
             uint256 _tokenId = tokenOfOwnerByIndex(sender, i);
 
             if (tokenSolution[_tokenId] == correctSolution) {
-                allCorrectAmounts += tokenAmouns[_tokenId];
+                allCorrectAmounts += tokenAmounts[_tokenId];
             }
         }
         _rewards =
-            (allCorrectAmounts / solutionAmounts[correctSolution]) *
-            winnerAllocationAmounts;
+            (allCorrectAmounts * winnerAllocationAmounts) /
+            solutionAmounts[correctSolution];
     }
+
     function calculateCanClaimedRewards()
         public
         view
@@ -197,12 +192,12 @@ contract FutureMarketContract is
                 !rewardsClaimed[_tokenId] &&
                 tokenSolution[_tokenId] == correctSolution
             ) {
-                allCanAmounts += tokenAmouns[_tokenId];
+                allCanAmounts += tokenAmounts[_tokenId];
             }
         }
         _rewards =
-            (allCanAmounts / solutionAmounts[correctSolution]) *
-            winnerAllocationAmounts;
+            (allCanAmounts * winnerAllocationAmounts) /
+            solutionAmounts[correctSolution];
     }
 
     function claimRewards() external {
@@ -210,6 +205,8 @@ contract FutureMarketContract is
         uint256 _rewards = calculateCanClaimedRewards();
 
         usdtToken.safeTransfer(sender, _rewards);
+
+        winnerClaimedAmounts[sender] += _rewards;
         emit ClaimRewards(sender, _rewards);
     }
 
@@ -254,10 +251,10 @@ contract FutureMarketContract is
                             Strings.toString(_tokenId),
                             '","image":"',
                             BASE_URI,
-                             '","solution":"',
+                            '","solution":"',
                             Strings.toString(tokenSolution[_tokenId]),
-                              '","USDT":"',
-                            Strings.toString(tokenAmouns[_tokenId]),
+                            '","USDT":"',
+                            Strings.toString(tokenAmounts[_tokenId]),
                             '"}'
                         )
                     )

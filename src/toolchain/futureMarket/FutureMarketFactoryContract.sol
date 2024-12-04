@@ -17,7 +17,6 @@ contract FutureMarketFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
         uint32 allocationTime
     );
 
-    error InvalidCaller();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -38,7 +37,6 @@ contract FutureMarketFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
 
     function createFutureMarketCollection(
         string calldata name,
-        string calldata symbol,
         uint32 _startTime,
         uint32 _endTime,
         uint32 _allocationTime
@@ -47,7 +45,7 @@ contract FutureMarketFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
         require(_allocationTime > _endTime, "Invalid time");
 
         bytes32 salt = keccak256(
-            abi.encode(_msgSender(), name, symbol, block.timestamp)
+            abi.encode(_msgSender(), name, block.timestamp)
         );
 
         address collection = Clones.cloneDeterministic(
@@ -58,7 +56,7 @@ contract FutureMarketFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
         (bool success, bytes memory returnData) = collection.call(
             abi.encodeCall(
                 FutureMarketContract.initialize,
-                (name, symbol, sender, _startTime, _endTime, _allocationTime)
+                (name, sender, _startTime, _endTime, _allocationTime)
             )
         );
         if (!success) {

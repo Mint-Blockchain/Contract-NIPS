@@ -2,13 +2,12 @@
 pragma solidity ^0.8.20;
 
 abstract contract FutureMarketCommonStorage {
-    address public creator;
 
     uint32 public startTime;
     uint32 public endTime;
     uint32 public allocationTime;
 
-    event FutureMarket(
+    event Bet(
         address indexed recipient,
         address indexed collection,
         uint256 indexed tokenId,
@@ -26,8 +25,8 @@ abstract contract FutureMarketCommonStorage {
         uint256 claimedAmount
     );
 
-    uint256 public constant A_SOLUTION = 0;
-    uint256 public constant B_SOLUTION = 1;
+    uint256 public constant A_SOLUTION = 1;
+    uint256 public constant B_SOLUTION = 2;
 
     uint256 public correctSolution;
     string public correctSolutionDesc;
@@ -43,9 +42,10 @@ abstract contract FutureMarketCommonStorage {
     mapping(uint256 solution => uint256 counts) public solutionNumber;
 
     mapping(uint256 tokenId => uint256 solution) public tokenSolution;
-    mapping(uint256 tokenId => uint256 amounts) public tokenAmouns;
+    mapping(uint256 tokenId => uint256 amounts) public tokenAmounts;
 
     mapping(uint256 tokenId => bool) public rewardsClaimed;
+    mapping(address winner => uint256 amounts) public winnerClaimedAmounts;
 
     string public constant BASE_URI = "";
     address public constant PLATFORM_ADDRESS =
