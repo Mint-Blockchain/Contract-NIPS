@@ -37,7 +37,11 @@ contract ERC5484Example is
         mintByTokenId(_to, _burnAuth, _tokenId);
     }
 
-    function mintByTokenId(address _to, BurnAuth _burnAuth, uint256 _tokenId) public {
+    function mintByTokenId(
+        address _to,
+        BurnAuth _burnAuth,
+        uint256 _tokenId
+    ) public {
         _safeMint(_to, _tokenId);
         _onIssued(address(0), _to, _tokenId, _burnAuth);
     }
@@ -54,10 +58,8 @@ contract ERC5484Example is
         require(_isAuthorizedToBurn(_tokenId), "ERC5484: sender cannot burn");
 
         _burn(_tokenId);
-
-        if (tokenBurnAuths[_tokenId]) {
-            delete tokenBurnAuths[_tokenId];
-        }
+        
+        delete tokenBurnAuths[_tokenId];
     }
 
     function burnAuth(
