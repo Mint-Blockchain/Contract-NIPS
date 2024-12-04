@@ -15,7 +15,7 @@ abstract contract FutureMarketCommonStorage {
         uint256 solution
     );
 
-    event CorrectSolution(
+    event AllocateSolution(
         address indexed recipient,
         uint256 solution
     );
@@ -36,7 +36,7 @@ abstract contract FutureMarketCommonStorage {
 
     uint256 public platformAmounts;
     uint256 public ownerAmounts;
-    uint256 public winnerAllocationAmounts;
+    uint256 public winnerAmounts;
 
     mapping(uint256 solution => uint256 amounts) public solutionAmounts;
     mapping(uint256 solution => uint256 counts) public solutionNumber;

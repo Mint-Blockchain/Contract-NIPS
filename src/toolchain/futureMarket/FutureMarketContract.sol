@@ -71,7 +71,7 @@ contract FutureMarketContract is
         emit Bet(sender, address(this), tokenId, _amount, _solution);
     }
 
-    function setCorrectSolution(
+    function allocateSolution(
         uint256 _solution,
         string calldata _description
     ) external {
@@ -96,12 +96,12 @@ contract FutureMarketContract is
             (
                 uint256 _platformAmounts,
                 uint256 _ownerAmounts,
-                uint256 _winnerAllocationAmounts
+                uint256 _winnerAmounts
             ) = calculateRewards(correctSolution);
 
             platformAmounts = _platformAmounts;
             ownerAmounts = _ownerAmounts;
-            winnerAllocationAmounts = _winnerAllocationAmounts;
+            winnerAmounts = _winnerAmounts;
 
             if (platformAmounts > 0) {
                 usdtToken.safeTransfer(PLATFORM_ADDRESS, platformAmounts);
@@ -112,10 +112,10 @@ contract FutureMarketContract is
         }
 
         correctSolutionStatus = true;
-        emit CorrectSolution(sender, _solution);
+        emit AllocateSolution(sender, _solution);
     }
 
-    function forecastTokenIdCorrectRewards(
+    function forecastTokenIdRewards(
         uint256 _tokenId
     ) external view returns (uint256 _rewards) {
         _requireOwned(_tokenId);
@@ -127,10 +127,10 @@ contract FutureMarketContract is
 
         uint256 _solution = tokenSolution[_tokenId];
 
-        (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
+        (, , uint256 _winnerAmounts) = calculateRewards(_solution);
 
         _rewards =
-            (tokenAmounts[_tokenId] * _winnerAllocationAmounts) /
+            (tokenAmounts[_tokenId] * _winnerAmounts) /
             solutionAmounts[_solution];
     }
 
@@ -142,11 +142,11 @@ contract FutureMarketContract is
             correctSolutionStatus == false,
             "The Solution have been announced"
         );
-        (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
+        (, , uint256 _winnerAmounts) = calculateRewards(_solution);
         uint256 _newSolutionAmounts = solutionAmounts[_solution] + _amount;
-        _winnerAllocationAmounts += _amount;
+        _winnerAmounts += _amount;
 
-        _rewards = (_amount / _newSolutionAmounts) * _winnerAllocationAmounts;
+        _rewards = (_amount / _newSolutionAmounts) * _winnerAmounts;
     }
 
     function calculateAllRewards() external view returns (uint256 _rewards) {
@@ -167,7 +167,7 @@ contract FutureMarketContract is
             }
         }
         _rewards =
-            (allCorrectAmounts * winnerAllocationAmounts) /
+            (allCorrectAmounts * winnerAmounts) /
             solutionAmounts[correctSolution];
     }
 
@@ -196,7 +196,7 @@ contract FutureMarketContract is
             }
         }
         _rewards =
-            (allCanAmounts * winnerAllocationAmounts) /
+            (allCanAmounts * winnerAmounts) /
             solutionAmounts[correctSolution];
     }
 
@@ -218,17 +218,17 @@ contract FutureMarketContract is
         returns (
             uint256 _platformAmounts,
             uint256 _ownerAmounts,
-            uint256 _winnerAllocationAmounts
+            uint256 _winnerAmounts
         )
     {
         require(
             _solution == A_SOLUTION || _solution == B_SOLUTION,
             "Invalid _solution"
         );
-        uint256 _errSolutionAmounts = totalAmounts - solutionAmounts[_solution];
-        _platformAmounts = (_errSolutionAmounts * 2) / 100;
-        _ownerAmounts = (_errSolutionAmounts * 3) / 100;
-        _winnerAllocationAmounts =
+        uint256 _loseSolutionAmounts = totalAmounts - solutionAmounts[_solution];
+        _platformAmounts = (_loseSolutionAmounts * 2) / 100;
+        _ownerAmounts = (_loseSolutionAmounts * 3) / 100;
+        _winnerAmounts =
             totalAmounts -
             _platformAmounts -
             _ownerAmounts;
