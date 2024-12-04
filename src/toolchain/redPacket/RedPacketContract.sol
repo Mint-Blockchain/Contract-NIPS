@@ -2,10 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "./RedPacketCommon.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -13,35 +11,25 @@ import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 
-contract RedPacketContract is 
-    RedPacketCommon,
-    ERC721EnumerableUpgradeable, 
-    OwnableUpgradeable, 
-    ReentrancyGuardUpgradeable, 
-    UUPSUpgradeable 
-{
+contract RedPacketContract is RedPacketCommon, ERC721Upgradeable, OwnableUpgradeable {
 
-    IERC20 public constant USDT = IERC20(0xED85184DC4BECf731358B2C63DE971856623e056); 
-    uint256 public constant RED_PACKET_MIN_AMOUNT = 10 ** 4; 
-    address internal constant RED_PACKET_SIGNER_ADDRESS = 0x30Ad9B9F4b7399fdaD7B913f41B55Fe84aBC22eF; 
-
-    string public RED_PACKET_COVER_URI = "";
-    string public RED_PACKET_GRABBED_COVER_URI = "";
-
-    PacketType public packetType;     
-    PacketMode public packetMode;     
+    RedPacketType public redPacketType;     
+    RedPacketMode public redPacketMode;     
     uint256 public totalAmount;       
     uint256 public totalPackets;      
     uint256 public remainingAmount;   
     uint256 public remainingPackets;  
     uint32 public expiration;      
 
+    uint256 private _nextTokenId;
     bytes32 internal RED_PACKET_DOMAIN_SEPARATOR;
     bytes32 internal password;      
     bytes internal whitelist; 
-    mapping(uint256 => uint256) internal grabbedAmounts; 
+    mapping(uint256 => uint256) internal grabbedTokenId; 
+    mapping(address => uint256) internal grabbedAddress; 
+    mapping(uint256 => uint256) internal withdrawnTokenId; 
     
-    event RedPacketGrab(address indexed claimer, uint256 indexed tokenId, uint256 amount);
+    event RedPacketGrab(address indexed claimer, uint256 indexed tokenId, uint256 amount, uint256 remainingAmount, uint256 remainingPackets);
     event RedPacketWithdraw(address indexed claimer, uint256 indexed tokenId, uint256 amount);
     event RedPacketRefund(address indexed claimer, uint256 remainingAmount, uint256 remainingPackets);
 
@@ -50,100 +38,87 @@ contract RedPacketContract is
         _disableInitializers();
     }
 
-    function initialize(
-        string calldata _name,
-        string calldata _symbol,
-        PacketType _packetType,
-        PacketMode _packetMode,
-        uint256 _totalAmount,
-        uint256 _totalPackets,
-        uint32 _expiration,
-        bytes32 _password,
-        bytes calldata _whitelist,
-        address _initialOwner
-    ) public initializer {
-        __ERC721_init(_name, _symbol);
-        __Ownable_init(_initialOwner);
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
+    function initialize(RedPacket calldata redPacket) external {
+        
+        __ERC721_init(redPacket.name, "RP");
+        __Ownable_init(redPacket.initialOwner);
 
-        require(_packetType == PacketType.Normal || _packetType == PacketType.Password || _packetType == PacketType.Whitelist, "Invalid packet type");
-        require(_packetMode == PacketMode.Equal || _packetMode == PacketMode.Lucky, "Invalid packet mode");
-        require(_totalAmount >= _totalPackets * RED_PACKET_MIN_AMOUNT, "Insufficient total amount");
-        if (_packetMode == PacketMode.Equal) {
-            require(_totalAmount % _totalPackets == 0, "totalAmount not divisible by totalPackets");
+        require(redPacket.redPacketType == RedPacketType.Normal || redPacket.redPacketType == RedPacketType.Password || redPacket.redPacketType == RedPacketType.Whitelist, "Invalid packet type");
+        require(redPacket.redPacketMode == RedPacketMode.Equal || redPacket.redPacketMode == RedPacketMode.Lucky, "Invalid packet mode");
+        require(redPacket.totalAmount >= redPacket.totalPackets * RED_PACKET_MIN_AMOUNT, "Insufficient total amount");
+        require(redPacket.totalPackets > 0, "Invalid red packet count");
+        if (redPacket.redPacketMode == RedPacketMode.Equal) {
+            require(redPacket.totalAmount % redPacket.totalPackets == 0, "totalAmount not divisible by totalPackets");
+            require(redPacket.totalAmount % RED_PACKET_MIN_AMOUNT == 0, "totalAmount not divisible by RED_PACKET_MIN_AMOUNT");
         }
-        require(_totalPackets > 0, "Invalid red packet count");
-        require(_expiration >= block.timestamp, "Invalid expiration time");
+        require(redPacket.expiration >= block.timestamp, "Invalid expiration time");
 
-        if (_packetType == PacketType.Password) {
-            require(_password != bytes32(0), "No password set");
+        if (redPacket.redPacketType == RedPacketType.Password) {
+            require(redPacket.password != bytes32(0), "No password set");
         }
-        if (_packetType == PacketType.Whitelist) {
-            require(_whitelist.length > 0, "No whitelist set");
+        if (redPacket.redPacketType == RedPacketType.Whitelist) {
+            require(redPacket.whitelist.length > 0, "No whitelist set");
         }
 
-        packetType = _packetType;
-        packetMode = _packetMode;
-        totalAmount = _totalAmount;
-        totalPackets = _totalPackets;
-        remainingAmount = _totalAmount;
-        remainingPackets = _totalPackets;
-        expiration = _expiration;
-        password = _password;
-        whitelist = _whitelist;
+        redPacketType = redPacket.redPacketType;
+        redPacketMode = redPacket.redPacketMode;
+        totalAmount = redPacket.totalAmount;
+        totalPackets = redPacket.totalPackets;
+        remainingAmount = redPacket.totalAmount;
+        remainingPackets = redPacket.totalPackets;
+        expiration = redPacket.expiration;
+        password = redPacket.password;
+        whitelist = redPacket.whitelist;
 
         RED_PACKET_DOMAIN_SEPARATOR = _computeDomainSeparator();
     }
 
     function grabRedPacket(
-        bytes32 _info,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external nonReentrant {
+    ) external {
 
         require(tx.origin == msg.sender, "Contracts are not allowed");
         require(expiration >= block.timestamp, "Expired");
         require(remainingPackets > 0, "All packets grabbed");
-        require(balanceOf(msg.sender) == 0, "Grabbed");
-        if (packetType == PacketType.Password) {
-            require(_verifySigner(msg.sender, _info, _v, _r, _s) == RED_PACKET_SIGNER_ADDRESS, "Invalid signature");
+        require(grabbedAddress[msg.sender] == 0, "Grabbed");
+        if (redPacketType == RedPacketType.Password) {
+            require(_verifySigner(msg.sender, password, _v, _r, _s) == RED_PACKET_SIGNER_ADDRESS, "Invalid signature");
         }
-        if (packetType == PacketType.Whitelist) {
-            require(_verifySigner(msg.sender, _info, _v, _r, _s) == RED_PACKET_SIGNER_ADDRESS, "Invalid signature");
-        }
-        if (remainingPackets == totalPackets) {
-            require(USDT.balanceOf(address(this)) >= totalAmount, "No balance deposit");
+        if (redPacketType == RedPacketType.Whitelist) {
+            require(_verifySigner(msg.sender, bytes32(0), _v, _r, _s) == RED_PACKET_SIGNER_ADDRESS, "Invalid signature");
         }
 
         uint256 amount = _calculateRedPacketAmount();
         require(remainingAmount >= amount, "No enough funds");
 
-        uint256 tokenId = totalSupply() + 1;
-        grabbedAmounts[tokenId] = amount;
+        uint256 tokenId = ++_nextTokenId;
+        grabbedTokenId[tokenId] = amount;
+        grabbedAddress[msg.sender] = amount;
         remainingAmount -= amount;
         remainingPackets -= 1;
 
         _mint(msg.sender, tokenId);
 
-        emit RedPacketGrab(msg.sender, tokenId, amount);
+        emit RedPacketGrab(msg.sender, tokenId, amount, remainingAmount, remainingPackets);
     }
 
-    function withdrawAmount(uint256 tokenId) external nonReentrant {
+    function withdrawAmount(uint256 tokenId) external {
+
+        uint256 _amount = grabbedTokenId[tokenId];
+        require(_amount > 0, "Not grabbed");
         require(ownerOf(tokenId) == msg.sender, "Not NFT owner");
+        require(withdrawnTokenId[tokenId] == 0, "Already claimed");
 
-        uint256 amount = grabbedAmounts[tokenId];
-        require(amount > 0, "Already claimed or no funds");
+        withdrawnTokenId[tokenId] = _amount; 
+        SafeERC20.safeTransfer(USDT, msg.sender, _amount);
 
-        grabbedAmounts[tokenId] = 0;
-        SafeERC20.safeTransfer(USDT, msg.sender, amount);
-
-        emit RedPacketWithdraw(msg.sender, tokenId, amount);
+        emit RedPacketWithdraw(msg.sender, tokenId, _amount);
     }
 
     function _calculateRedPacketAmount() internal view returns (uint256) {
-        if (packetMode == PacketMode.Equal) {
+        if (redPacketMode == RedPacketMode.Equal) {
             return totalAmount / totalPackets;
         } else {
             return _randomAmount(remainingAmount, remainingPackets);
@@ -157,13 +132,16 @@ contract RedPacketContract is
             return _remainingAmount;
         }
 
-        uint256 max = (_remainingAmount * 2) / _remainingPackets;
+        uint256 max = ((_remainingAmount * 2) / _remainingPackets) / RED_PACKET_MIN_AMOUNT * RED_PACKET_MIN_AMOUNT;
         uint256 random = uint256(
-            keccak256(abi.encodePacked(blockhash(block.number - 1), blockhash(block.number - 2), block.timestamp, block.prevrandao, msg.sender))
+            keccak256(abi.encodePacked(blockhash(block.number - 1), blockhash(block.number - 2), block.timestamp, block.prevrandao, msg.sender, _remainingPackets))
         );
 
-        uint256 red = random % max;
+        uint256 red = (random % max) / RED_PACKET_MIN_AMOUNT * RED_PACKET_MIN_AMOUNT;
         red = red < RED_PACKET_MIN_AMOUNT ? RED_PACKET_MIN_AMOUNT : red;
+        if (red == max) {
+            red -= RED_PACKET_MIN_AMOUNT;
+        }
         if (_remainingAmount < red + (_remainingPackets - 1) * RED_PACKET_MIN_AMOUNT) {
             red = _remainingAmount - (_remainingPackets - 1) * RED_PACKET_MIN_AMOUNT;
         }
@@ -173,7 +151,12 @@ contract RedPacketContract is
     
     function getGrabbedAmount(uint256 tokenId) public view returns (uint256)  {
         _requireOwned(tokenId);
-        return grabbedAmounts[tokenId];
+        return grabbedTokenId[tokenId];
+    }
+    
+    function getWithdrawnAmount(uint256 tokenId) public view returns (uint256)  {
+        _requireOwned(tokenId);
+        return withdrawnTokenId[tokenId];
     }
 
     function getWhitelist() public view returns (bytes memory) {
@@ -194,10 +177,10 @@ contract RedPacketContract is
 
         emit RedPacketRefund(msg.sender, _remainingAmount, remainingPackets);
     }
-    
+
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
-        uint256 _amount = grabbedAmounts[tokenId];
+        uint256 _amount = grabbedTokenId[tokenId];
         return 
             string(
                 abi.encodePacked(
@@ -257,6 +240,4 @@ contract RedPacketContract is
                 )
             );
     }
-
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
