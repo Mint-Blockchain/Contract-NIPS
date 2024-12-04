@@ -9,17 +9,16 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract FutureMarketContract is
     Initializable,
-    ERC721Upgradeable,
-    FutureMarketCommonStorage,
-    ReentrancyGuardUpgradeable
+    ERC721EnumerableUpgradeable,
+    FutureMarketCommonStorage
 {
     using SafeERC20 for IERC20;
     IERC20 public usdtToken =
@@ -33,56 +32,33 @@ contract FutureMarketContract is
     }
 
     function initialize(
-        string calldata name_,
-        string calldata symbol_,
-        bytes calldata packedData,
-        bytes calldata information
+        string calldata _name,
+        string calldata _symbol,
+        address _creator,
+        uint32 _startTime,
+        uint32 _endTime,
+        uint32 _allocationTime
     ) external initializer {
-        __ERC721_init(name_, symbol_);
+        __ERC721_init(_name, _symbol);
 
-        __ReentrancyGuard_init();
-
-        initInfo(information);
-        initPublicTime(packedData);
-        factoryAddress = msg.sender;
-    }
-
-    function initInfo(bytes calldata information) internal {
-        baseURI = abi.decode(information, (string));
-    }
-    function initPublicTime(bytes calldata packedData) internal {
-        (uint32 _startTime, uint32 _endTimeTime, uint32 _allocationTime) = abi
-            .decode(packedData, (uint32, uint32, uint32));
-        require(_endTimeTime > _startTime, "Invalid time");
-        require(_allocationTime > _endTimeTime, "Invalid time");
-        investTimeConfig.startTime = _startTime;
-        investTimeConfig.endTime = _endTimeTime;
-        investTimeConfig.allocationTime = _allocationTime;
+        startTime = _startTime;
+        endTime = _endTime;
+        allocationTime = _allocationTime;
+        creator = _creator;
     }
 
     modifier checkPublicPhase() {
-        require(
-            block.timestamp >= investTimeConfig.startTime,
-            "Time is not up, please wait"
-        );
-        require(block.timestamp >= investTimeConfig.startTime, "Haven't started yet");
-        require(block.timestamp <= investTimeConfig.endTime, "Already over");
+        require(block.timestamp >= startTime, "Haven't started yet");
+        require(block.timestamp <= endTime, "Already over");
         _;
     }
 
-    function owner() public view returns (address) {
-        return
-            ERC721Upgradeable(factoryAddress).ownerOf(
-                uint256(uint160(address(this)))
-            );
-    }
-
-    function buy(
-        uint256 _amount,
-        Solution _solution
-    ) external nonReentrant checkPublicPhase {
+    function buy(uint256 _amount, uint256 _solution) external checkPublicPhase {
         require(_amount > 0, "Invalid amount");
-        require(_solution != Solution.Empty, "Invalid _solution");
+        require(
+            _solution == A_SOLUTION || _solution == B_SOLUTION,
+            "Invalid _solution"
+        );
         address sender = _msgSender();
         require(
             usdtToken.balanceOf(sender) >= _amount,
@@ -94,43 +70,24 @@ contract FutureMarketContract is
         _mint(sender, tokenId);
 
         totalAmounts += _amount;
-        if (_solution == Solution.ASolution) {
-            aSolutionAmounts += _amount;
-            aActivate = true;
-        } else {
-            bSolutionAmounts += _amount;
-            bActivate = true;
-        }
-        buySolutionToken[_solution].push(tokenId);
-        buySolution[tokenId] = _solution;
-        buyAmouns[tokenId] = _amount;
-        activate = true;
+        solutionAmounts[_solution] += _amount;
+        solutionNumber[_solution]++;
+        tokenSolution[tokenId] = _solution;
+        tokenAmouns[tokenId] = _amount;
 
         emit FutureMarket(sender, address(this), tokenId, _amount, _solution);
     }
-    function getSolutionAmounts(
-        Solution _solution
-    ) external view returns (uint256 _numbers, uint256 _amounts) {
-        require(_solution != Solution.Empty, "Invalid _solution");
-
-        _numbers = buySolutionToken[_solution].length;
-        if (_solution == Solution.ASolution) {
-            _amounts = aSolutionAmounts;
-        } else {
-            _amounts = bSolutionAmounts;
-        }
-    }
 
     function setCorrectSolution(
-        Solution _solution,
+        uint256 _solution,
         string calldata _description
     ) external {
-        require(_solution != Solution.Empty, "Invalid _solution");
-
         require(
-            block.timestamp >= investTimeConfig.allocationTime,
-            "Event not completed"
+            _solution == A_SOLUTION || _solution == B_SOLUTION,
+            "Invalid _solution"
         );
+
+        require(block.timestamp >= allocationTime, "Event not completed");
         require(
             correctSolutionStatus == false,
             "Repetitive operation: The Solution have been announced"
@@ -142,214 +99,142 @@ contract FutureMarketContract is
         correctSolution = _solution;
         correctSolutionDesc = _description;
 
-        if (activate) {
-            allocationRewards();
+        if (totalAmounts > 0) {
+            (
+                uint256 _platformAmounts,
+                uint256 _ownerAmounts,
+                uint256 _winnerAllocationAmounts
+            ) = calculateRewards(correctSolution);
+
+            platformAmounts = _platformAmounts;
+            ownerAmounts = _ownerAmounts;
+            winnerAllocationAmounts = _winnerAllocationAmounts;
 
             if (platformAmounts > 0) {
-                usdtToken.safeTransfer(PLATFORM, platformAmounts);
+                usdtToken.safeTransfer(PLATFORM_ADDRESS, platformAmounts);
             }
             if (ownerAmounts > 0) {
-                usdtToken.safeTransfer(owner(), ownerAmounts);
+                usdtToken.safeTransfer(creator, ownerAmounts);
             }
         }
 
         correctSolutionStatus = true;
-        emit CorrectSolution(_msgSender(), address(this), _solution);
-    }
-
-    function allocationRewards() internal {
-        (
-            uint256 _platformAmounts,
-            uint256 _ownerAmounts,
-            uint256 _winnerAllocationAmounts,
-            uint256 _correctSolutionAmounts
-        ) = calculateWinnerRewards(correctSolution);
-        platformAmounts = _platformAmounts;
-        ownerAmounts = _ownerAmounts;
-        winnerAllocationAmounts = _winnerAllocationAmounts;
-        correctSolutionAmounts = _correctSolutionAmounts;
-
-        if (winnerAllocationAmounts > 0) {
-            uint256[] memory tokenIdArr = buySolutionToken[correctSolution];
-
-            for (uint i = 0; i < tokenIdArr.length; i++) {
-                uint256 tokenId = tokenIdArr[i];
-                winRewardsAmouns[tokenId] =
-                    (buyAmouns[tokenId] / correctSolutionAmounts) *
-                    winnerAllocationAmounts;
-            }
-        }
+        emit CorrectSolution(sender, _solution);
     }
 
     function forecastTokenIdCorrectRewards(
         uint256 _tokenId
     ) external view returns (uint256 _rewards) {
         _requireOwned(_tokenId);
+
         require(
             correctSolutionStatus == false,
             "The Solution have been announced"
         );
 
-        Solution _solution = buySolution[_tokenId];
+        uint256 _solution = tokenSolution[_tokenId];
 
-        (
-            ,
-            ,
-            uint256 _winnerAllocationAmounts,
-            uint256 _correctSolutionAmounts
-        ) = calculateWinnerRewards(_solution);
+        (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
 
         _rewards =
-            (buyAmouns[_tokenId] / _correctSolutionAmounts) *
+            (tokenAmouns[_tokenId] / solutionAmounts[_solution]) *
             _winnerAllocationAmounts;
     }
 
     function forecastNewInvestRewards(
         uint256 _amount,
-        Solution _solution
+        uint256 _solution
     ) external view returns (uint256 _rewards) {
         require(
             correctSolutionStatus == false,
             "The Solution have been announced"
         );
-        (
-            ,
-            ,
-            uint256 _winnerAllocationAmounts,
-            uint256 _correctSolutionAmounts
-        ) = calculateWinnerRewards(_solution);
+        (, , uint256 _winnerAllocationAmounts) = calculateRewards(_solution);
 
         _rewards =
-            (_amount / _correctSolutionAmounts) *
+            (_amount / solutionAmounts[_solution]) *
             _winnerAllocationAmounts;
     }
-    function calculateAllRewards(
-        uint256[] calldata _tokenIdArr
-    ) external view returns (uint256 _rewards) {
+    function calculateAllRewards() external view returns (uint256 _rewards) {
         require(
             correctSolutionStatus,
             "The Solution haven't been announced yet"
         );
-        require(activate, "Invalid operation");
-
         address sender = _msgSender();
+        uint256 holdNumber = balanceOf(sender);
+        require(holdNumber > 0, "No token held");
 
-        for (uint i = 0; i < _tokenIdArr.length; i++) {
-            uint256 tokenId = _tokenIdArr[i];
-            address tokenOwner = _requireOwned(tokenId);
-            require(tokenOwner == sender, "Invalid tokenId");
+        uint256 allCorrectAmounts;
+        for (uint i = 0; i < holdNumber; i++) {
+            uint256 _tokenId = tokenOfOwnerByIndex(sender, i);
 
-            if (buySolution[tokenId] == correctSolution) {
-                _rewards += winRewardsAmouns[tokenId];
+            if (tokenSolution[_tokenId] == correctSolution) {
+                allCorrectAmounts += tokenAmouns[_tokenId];
             }
         }
+        _rewards =
+            (allCorrectAmounts / solutionAmounts[correctSolution]) *
+            winnerAllocationAmounts;
     }
-    function calculateAlreadyClaimedRewards(
-        uint256[] calldata _tokenIdArr
-    ) external view returns (uint256 _rewards) {
+    function calculateCanClaimedRewards()
+        public
+        view
+        returns (uint256 _rewards)
+    {
         require(
             correctSolutionStatus,
             "The Solution haven't been announced yet"
         );
-        require(activate, "Invalid operation");
-
         address sender = _msgSender();
+        uint256 holdNumber = balanceOf(sender);
+        require(holdNumber > 0, "No token held");
 
-        for (uint i = 0; i < _tokenIdArr.length; i++) {
-            uint256 tokenId = _tokenIdArr[i];
-            address tokenOwner = _requireOwned(tokenId);
-            require(tokenOwner == sender, "Invalid tokenId");
+        uint256 allCanAmounts;
+        for (uint i = 0; i < holdNumber; i++) {
+            uint256 _tokenId = tokenOfOwnerByIndex(sender, i);
 
             if (
-                rewardsClaimed[tokenId] &&
-                buySolution[tokenId] == correctSolution
+                !rewardsClaimed[_tokenId] &&
+                tokenSolution[_tokenId] == correctSolution
             ) {
-                _rewards += winRewardsAmouns[tokenId];
+                allCanAmounts += tokenAmouns[_tokenId];
             }
         }
+        _rewards =
+            (allCanAmounts / solutionAmounts[correctSolution]) *
+            winnerAllocationAmounts;
     }
 
-    function claimRewards(
-        uint256[] calldata _tokenIdArr
-    ) external nonReentrant {
-        require(
-            correctSolutionStatus,
-            "The Solution haven't been announced yet"
-        );
-        require(activate, "Invalid operation");
-
+    function claimRewards() external {
         address sender = _msgSender();
+        uint256 _rewards = calculateCanClaimedRewards();
 
-        uint256 _rewards;
-        for (uint i = 0; i < _tokenIdArr.length; i++) {
-            uint256 tokenId = _tokenIdArr[i];
-            address tokenOwner = _requireOwned(tokenId);
-            require(tokenOwner == sender, "Invalid tokenId");
-
-            if (
-                !rewardsClaimed[tokenId] &&
-                buySolution[tokenId] == correctSolution
-            ) {
-                _rewards += winRewardsAmouns[tokenId];
-
-                rewardsClaimed[tokenId] = true;
-            }
-        }
         usdtToken.safeTransfer(sender, _rewards);
-        emit ClaimRewards(sender, address(this), _rewards);
+        emit ClaimRewards(sender, _rewards);
     }
 
-    function calculateWinnerRewards(
-        Solution _correctSolution
+    function calculateRewards(
+        uint256 _solution
     )
         internal
         view
         returns (
             uint256 _platformAmounts,
             uint256 _ownerAmounts,
-            uint256 _winnerAllocationAmounts,
-            uint256 _correctSolutionAmounts
+            uint256 _winnerAllocationAmounts
         )
     {
-        if (aActivate && bActivate) {
-            if (_correctSolution == Solution.ASolution) {
-                _platformAmounts = (bSolutionAmounts * 2) / 100;
-                _ownerAmounts = (bSolutionAmounts * 3) / 100;
-                _winnerAllocationAmounts =
-                    aSolutionAmounts +
-                    bSolutionAmounts -
-                    _platformAmounts -
-                    _ownerAmounts;
-
-                _correctSolutionAmounts = aSolutionAmounts;
-            } else if (_correctSolution == Solution.BSolution) {
-                _platformAmounts = (aSolutionAmounts * 2) / 100;
-                _ownerAmounts = (aSolutionAmounts * 3) / 100;
-                _winnerAllocationAmounts =
-                    bSolutionAmounts +
-                    aSolutionAmounts -
-                    _platformAmounts -
-                    _ownerAmounts;
-
-                _correctSolutionAmounts = bSolutionAmounts;
-            }
-        } else if (!aActivate) {
-            if (_correctSolution == Solution.ASolution) {
-                _platformAmounts = (totalAmounts * 50) / 100;
-                _ownerAmounts = (totalAmounts * 50) / 100;
-            } else if (_correctSolution == Solution.BSolution) {
-                _winnerAllocationAmounts = totalAmounts;
-                _correctSolutionAmounts = totalAmounts;
-            }
-        } else if (!bActivate) {
-            if (_correctSolution == Solution.ASolution) {
-                _winnerAllocationAmounts = totalAmounts;
-                _correctSolutionAmounts = totalAmounts;
-            } else if (_correctSolution == Solution.BSolution) {
-                _platformAmounts = (totalAmounts * 50) / 100;
-                _ownerAmounts = (totalAmounts * 50) / 100;
-            }
-        }
+        require(
+            _solution == A_SOLUTION || _solution == B_SOLUTION,
+            "Invalid _solution"
+        );
+        uint256 _errSolutionAmounts = totalAmounts - solutionAmounts[_solution];
+        _platformAmounts = (_errSolutionAmounts * 2) / 100;
+        _ownerAmounts = (_errSolutionAmounts * 3) / 100;
+        _winnerAllocationAmounts =
+            totalAmounts -
+            _platformAmounts -
+            _ownerAmounts;
     }
 
     function tokenURI(
@@ -368,7 +253,11 @@ contract FutureMarketContract is
                             " #",
                             Strings.toString(_tokenId),
                             '","image":"',
-                            baseURI,
+                            BASE_URI,
+                             '","solution":"',
+                            Strings.toString(tokenSolution[_tokenId]),
+                              '","USDT":"',
+                            Strings.toString(tokenAmouns[_tokenId]),
                             '"}'
                         )
                     )
