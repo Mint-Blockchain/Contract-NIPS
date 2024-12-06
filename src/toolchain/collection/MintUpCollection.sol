@@ -1,10 +1,13 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "erc721a-upgradeable/ERC721AUpgradeable.sol";
+import "erc721a-upgradeable/IERC721AUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract MintUpCollection is
     Initializable,
@@ -18,8 +21,11 @@ contract MintUpCollection is
         uint64 price;
         uint256 startTime;
         uint256 endTime;
+        uint8 imageType;
     }
 
+    uint8 internal constant IMAGE_TYPE_SINGLE = 0;
+    uint8 internal constant IMAGE_TYPE_MULIT = 1;
     uint256 public constant BASIS_POINTS = 10000;
     uint256 public constant PROTOCOL_FEE = 500;
     address internal constant MINT_UP_ADMIN =
@@ -28,18 +34,24 @@ contract MintUpCollection is
     string public baseURI;
     MintConfig public mintConfig;
 
-    error InvalidCaller();
-    error InvalidTime();
-    error MintNotStart();
-    error MintFinished();
-    error OverMaxLimit();
-    error SendValueFailed();
-    error OverLimit(address minter);
-    error InsufficientBalance(address minter);
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
+    }
+
+    modifier isEOA() {
+        require(tx.origin == msg.sender, "Invalid caller");
+        _;
+    }
+
+    modifier isTimeValid() {
+        require(block.timestamp > mintConfig.startTime, "Mint not start");
+
+        if (mintConfig.endTime > 0) {
+            require(block.timestamp < mintConfig.endTime, "Mint finished");
+        }
+
+        _;
     }
 
     function initialize(
@@ -47,30 +59,108 @@ contract MintUpCollection is
         string memory name,
         string memory symbol,
         bytes calldata extendData
-    ) public initializer {
+    ) public initializerERC721A initializer {
         __ERC721A_init(name, symbol);
         __Ownable_init(initialOwner);
+
         _initInfo(extendData);
     }
 
-    modifier isEOA() {
-        if (tx.origin != msg.sender) revert InvalidCaller();
-        _;
+    function _initInfo(bytes calldata extendData) internal {
+        uint256 startTime = block.timestamp;
+        string memory baseUri;
+        uint256 maxSupply;
+        uint256 maxMint;
+        uint64 price;
+        uint256 endTime;
+        uint8 imageType;
+
+        (baseUri, maxSupply, maxMint, price, endTime, imageType) = abi.decode(
+            extendData,
+            (string, uint256, uint256, uint64, uint256, uint8)
+        );
+
+        if (endTime > 0) {
+            require(endTime > startTime, "Invalid time");
+        }
+
+        baseURI = baseUri;
+
+        mintConfig = MintConfig(
+            maxSupply,
+            maxMint,
+            price,
+            startTime,
+            endTime,
+            imageType
+        );
     }
 
-    modifier isTimeValid() {
-        if (block.timestamp < mintConfig.startTime) {
-            revert MintNotStart();
+    function mint(
+        uint256 amount
+    ) external payable nonReentrant isEOA isTimeValid {
+        address account = msg.sender;
+
+        require(msg.value >= mintConfig.price * amount, "insufficient balance");
+
+        if (mintConfig.maxSupply > 0) {
+            require(
+                mintConfig.maxSupply >= amount + totalSupply(),
+                "Over max supply"
+            );
         }
 
-        if (mintConfig.endTime > 0 && block.timestamp > mintConfig.endTime) {
-            revert MintFinished();
+        if (mintConfig.maxMint > 0) {
+            require(
+                amount + _numberMinted(account) <= mintConfig.maxMint,
+                "Over mint limit"
+            );
         }
-        _;
+
+        _safeMint(account, amount);
+        _transferValue();
     }
 
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
+        require(_exists(tokenId), "Token not exist");
+
+        string memory imageURI;
+
+        if (mintConfig.imageType == IMAGE_TYPE_SINGLE) {
+            imageURI = baseURI;
+        }
+
+        if (mintConfig.imageType == IMAGE_TYPE_MULIT) {
+            imageURI = string.concat(
+                baseURI,
+                Strings.toString(tokenId),
+                ".png"
+            );
+        }
+
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(
+                        abi.encodePacked(
+                            '{"name":"',
+                            name(),
+                            " #",
+                            Strings.toString(tokenId),
+                            '","image":"',
+                            imageURI,
+                            '"}'
+                        )
+                    )
+                )
+            );
     }
 
     function _startTokenId() internal view virtual override returns (uint256) {
@@ -79,9 +169,7 @@ contract MintUpCollection is
 
     function _sendValue(address to, uint256 amount) private {
         (bool success, ) = payable(to).call{value: amount}("");
-        if (!success) {
-            revert SendValueFailed();
-        }
+        require(success, "Send value failed");
     }
 
     function _transferValue() private {
@@ -92,53 +180,5 @@ contract MintUpCollection is
         uint256 fees = (total * PROTOCOL_FEE) / BASIS_POINTS;
         _sendValue(MINT_UP_ADMIN, fees);
         _sendValue(owner(), total - fees);
-    }
-
-    function mint(
-        uint256 amount
-    ) external payable nonReentrant isEOA isTimeValid {
-        address account = msg.sender;
-
-        if (msg.value < mintConfig.price * amount) {
-            revert InsufficientBalance(account);
-        }
-
-        if (
-            mintConfig.maxSupply > 0 &&
-            amount + _totalMinted() > mintConfig.maxSupply
-        ) {
-            revert OverMaxLimit();
-        }
-
-        if (
-            mintConfig.maxMint > 0 &&
-            amount + _numberMinted(account) > mintConfig.maxMint
-        ) {
-            revert OverLimit(account);
-        }
-
-        _safeMint(account, amount);
-        _transferValue();
-    }
-
-    function _initInfo(bytes calldata extendData) internal {
-        uint256 startTime = block.timestamp;
-        string memory baseUri;
-        uint256 maxSupply;
-        uint256 maxMint;
-        uint64 price;
-        uint256 endTime;
-
-        (baseUri, maxSupply, maxMint, price, endTime) = abi.decode(
-            extendData,
-            (string, uint256, uint256, uint64, uint256)
-        );
-
-        if (startTime > endTime) {
-            revert InvalidTime();
-        }
-
-        baseURI = baseUri;
-        mintConfig = MintConfig(maxSupply, maxMint, price, startTime, endTime);
     }
 }
