@@ -5,8 +5,13 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import {MintUpCollection} from "./MintUpCollection.sol";
+import "./MintUpCollectionCommonStorage.sol";
 
-contract MintUpCollectionFactoryContract is OwnableUpgradeable, UUPSUpgradeable {
+contract MintUpCollectionFactoryContract is
+    MintUpCollectionCommonStorage,
+    OwnableUpgradeable,
+    UUPSUpgradeable
+{
     address public implementationAddress;
 
     event NFTCollectionCreated(
@@ -34,13 +39,16 @@ contract MintUpCollectionFactoryContract is OwnableUpgradeable, UUPSUpgradeable 
     }
 
     function createNFTCollection(
-        string memory _name,
-        string memory _symbol,
-        bytes calldata _extendData
+        MintConfig calldata _mintConfig
     ) external returns (address) {
         address sender = _msgSender();
         bytes32 salt = keccak256(
-            abi.encode(sender, _name, _symbol, block.timestamp)
+            abi.encode(
+                sender,
+                _mintConfig.name,
+                _mintConfig.symbol,
+                block.timestamp
+            )
         );
         address collection = Clones.cloneDeterministic(
             implementationAddress,
@@ -48,10 +56,7 @@ contract MintUpCollectionFactoryContract is OwnableUpgradeable, UUPSUpgradeable 
         );
 
         (bool success, bytes memory returnData) = collection.call(
-            abi.encodeCall(
-                MintUpCollection.initialize,
-                (sender, _name, _symbol, _extendData)
-            )
+            abi.encodeCall(MintUpCollection.initialize, (sender, _mintConfig))
         );
 
         if (!success) {
@@ -60,7 +65,12 @@ contract MintUpCollectionFactoryContract is OwnableUpgradeable, UUPSUpgradeable 
             }
         }
 
-        emit NFTCollectionCreated(sender, collection, _name, _symbol);
+        emit NFTCollectionCreated(
+            sender,
+            collection,
+            _mintConfig.name,
+            _mintConfig.symbol
+        );
 
         return collection;
     }

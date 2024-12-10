@@ -13,8 +13,13 @@ contract MintUpCollectionContractScript is Script {
 
         address contractAddress = vm.envAddress("CONTRACT_ADDRESS");
 
-        address uupsProxy =
-            Upgrades.deployUUPSProxy("MintUpCollectionFactoryContract.sol", abi.encodeCall(MintUpCollectionFactoryContract.initialize, (contractAddress)));
+        address uupsProxy = Upgrades.deployUUPSProxy(
+            "MintUpCollectionFactoryContract.sol",
+            abi.encodeCall(
+                MintUpCollectionFactoryContract.initialize,
+                (contractAddress)
+            )
+        );
 
         console.log("uupsProxy deploy at %s", uupsProxy);
 

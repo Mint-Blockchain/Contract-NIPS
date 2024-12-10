@@ -8,30 +8,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./MintUpCollectionCommonStorage.sol";
 
 contract MintUpCollection is
+    MintUpCollectionCommonStorage,
     Initializable,
     ERC721AUpgradeable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    struct MintConfig {
-        uint256 maxSupply;
-        uint256 maxMint;
-        uint64 price;
-        uint256 startTime;
-        uint256 endTime;
-        uint8 imageType;
-    }
-
-    uint8 internal constant IMAGE_TYPE_SINGLE = 0;
-    uint8 internal constant IMAGE_TYPE_MULIT = 1;
-    uint256 public constant BASIS_POINTS = 10000;
-    uint256 public constant PROTOCOL_FEE = 500;
-    address internal constant MINT_UP_ADMIN =
-        0xE6d884c5195Aa6187b554E542DEaDcF0C91a431a;
-
-    string public baseURI;
     MintConfig public mintConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -56,44 +41,22 @@ contract MintUpCollection is
 
     function initialize(
         address initialOwner,
-        string memory name,
-        string memory symbol,
-        bytes calldata extendData
+        MintConfig calldata _mintConfig
     ) public initializerERC721A initializer {
-        __ERC721A_init(name, symbol);
+        __ERC721A_init(_mintConfig.name, _mintConfig.symbol);
         __Ownable_init(initialOwner);
 
-        _initInfo(extendData);
+        _initInfo(_mintConfig);
     }
 
-    function _initInfo(bytes calldata extendData) internal {
-        uint256 startTime = block.timestamp;
-        string memory baseUri;
-        uint256 maxSupply;
-        uint256 maxMint;
-        uint64 price;
-        uint256 endTime;
-        uint8 imageType;
-
-        (baseUri, maxSupply, maxMint, price, endTime, imageType) = abi.decode(
-            extendData,
-            (string, uint256, uint256, uint64, uint256, uint8)
-        );
-
-        if (endTime > 0) {
-            require(endTime > startTime, "Invalid time");
+    function _initInfo(MintConfig calldata _mintConfig) internal {
+        if (_mintConfig.endTime > 0) {
+            require(
+                _mintConfig.endTime > _mintConfig.startTime,
+                "Invalid time"
+            );
         }
-
-        baseURI = baseUri;
-
-        mintConfig = MintConfig(
-            maxSupply,
-            maxMint,
-            price,
-            startTime,
-            endTime,
-            imageType
-        );
+        mintConfig = _mintConfig;
     }
 
     function mint(
@@ -105,14 +68,15 @@ contract MintUpCollection is
 
         if (mintConfig.maxSupply > 0) {
             require(
-                mintConfig.maxSupply >= amount + totalSupply(),
+                mintConfig.maxSupply >=
+                    amount + _nextTokenId() - _startTokenId(),
                 "Over max supply"
             );
         }
 
         if (mintConfig.maxMint > 0) {
             require(
-                amount + _numberMinted(account) <= mintConfig.maxMint,
+                mintConfig.maxMint >= amount + _numberMinted(account),
                 "Over mint limit"
             );
         }
@@ -122,7 +86,7 @@ contract MintUpCollection is
     }
 
     function _baseURI() internal view override returns (string memory) {
-        return baseURI;
+        return mintConfig.baseURI;
     }
 
     function tokenURI(
@@ -133,12 +97,12 @@ contract MintUpCollection is
         string memory imageURI;
 
         if (mintConfig.imageType == IMAGE_TYPE_SINGLE) {
-            imageURI = baseURI;
+            imageURI = mintConfig.baseURI;
         }
 
         if (mintConfig.imageType == IMAGE_TYPE_MULIT) {
             imageURI = string.concat(
-                baseURI,
+                mintConfig.baseURI,
                 Strings.toString(tokenId),
                 ".png"
             );
