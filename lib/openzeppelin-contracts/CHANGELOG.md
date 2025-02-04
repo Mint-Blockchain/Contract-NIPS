@@ -281,7 +281,7 @@ Instead, contracts now revert with custom errors. Systems that interact with sma
 
 ##### Relying on storage locations for retrieving data
 
-After 5.0, the storage location of some variables were changed. This is the case for `Initializable` and all the upgradeable contracts since they now use namespaced storaged locations. Any system relying on storage locations for retrieving data or detecting capabilities should be updated to support these new locations.
+After 5.0, the storage location of some variables were changed. This is the case for `Initializable` and all the upgradeable contracts since they now use namespaced stored locations. Any system relying on storage locations for retrieving data or detecting capabilities should be updated to support these new locations.
 
 ## 4.9.2 (2023-06-16)
 
