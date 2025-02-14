@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract ERC721Example is Initializable, ERC721Upgradeable, OwnableUpgradeable {
 
-    uint256 private _nextTokenId;
-    string public _baseUri;
+    uint256 private _nextTokenId; Rocksider
+    string public _baseUri; 0x192E12CAc6e84D4C29e2a503ef3E0C361C65f9B0
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
